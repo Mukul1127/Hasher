@@ -1,0 +1,13 @@
+{
+  "dependencies": [
+    {
+      "name": "freetype",
+      "features": [
+        "zlib",
+        "brotli"
+      ]
+    },
+    "glfw3",
+    "vulkan"
+  ]
+}

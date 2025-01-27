@@ -10,8 +10,8 @@ find_package(glfw3 CONFIG REQUIRED)
 find_package(wolfssl CONFIG REQUIRED)
 find_package(Freetype REQUIRED)
 
-include_directories(include vendor/imgui vendor/imgui/backends vendor/imgui/misc/freetype)
+include_directories(include vendor/imgui vendor/imgui/backends vendor/imgui/misc/freetype vendor/imguifiledialog)
 
-add_executable(Hasher src/main.cpp src/hash.cpp vendor/imgui/imgui_demo.cpp vendor/imgui/imgui_draw.cpp vendor/imgui/imgui_tables.cpp vendor/imgui/imgui_widgets.cpp vendor/imgui/imgui.cpp vendor/imgui/backends/imgui_impl_glfw.cpp vendor/imgui/backends/imgui_impl_vulkan.cpp vendor/imgui/misc/freetype/imgui_freetype.cpp)
+add_executable(Hasher src/main.cpp src/hash.cpp vendor/imgui/imgui_demo.cpp vendor/imgui/imgui_draw.cpp vendor/imgui/imgui_tables.cpp vendor/imgui/imgui_widgets.cpp vendor/imgui/imgui.cpp vendor/imgui/backends/imgui_impl_glfw.cpp vendor/imgui/backends/imgui_impl_vulkan.cpp vendor/imgui/misc/freetype/imgui_freetype.cpp vendor/imguifiledialog/ImGuiFileDialog.cpp)
 
 target_link_libraries(Hasher PRIVATE glfw Vulkan::Vulkan wolfssl Freetype::Freetype) 

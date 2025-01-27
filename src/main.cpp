@@ -9,10 +9,10 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
+#include "ImGuiFileDialog.h"
 #include <GLFW/glfw3.h>
 #include "hash.h"
 
-// Data
 static VkAllocationCallbacks*   g_Allocator = nullptr;
 static VkInstance               g_Instance = VK_NULL_HANDLE;
 static VkPhysicalDevice         g_PhysicalDevice = VK_NULL_HANDLE;
@@ -177,6 +177,7 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface
 
     // Select Present Mode
     VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_FIFO_KHR };
+    // VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR };
     wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
 
     // Create SwapChain, RenderPass, Framebuffer, etc.
@@ -345,6 +346,9 @@ int main(int argc, char* argv[])
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+    io.ConfigWindowsMoveFromTitleBarOnly = true;
+    io.ConfigViewportsNoAutoMerge = true;
+    io.ConfigDockingTransparentPayload = true;
     io.IniFilename = NULL;
 
     ImGui::StyleColorsDark();
@@ -368,7 +372,7 @@ int main(int argc, char* argv[])
     init_info.CheckVkResultFn = check_vk_result;
     ImGui_ImplVulkan_Init(&init_info);
 
-    // Font
+    // Fonts
     io.Fonts->AddFontFromFileTTF("assets/Inter-Medium.woff2", 15.0f);
     ImFont* cascadia = io.Fonts->AddFontFromFileTTF("assets/CascadiaCodeNF-Regular.woff2", 15.0f);
 
@@ -377,9 +381,35 @@ int main(int argc, char* argv[])
     bool isCalculating = true;
     std::string errorMessage = "";
     bool running = true;
+    std::string filePath = "";
+
+    bool showDemoWindow = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    // Calculate hashes on alternate thread
+    // Set file path
+    if (argc > 1)
+    {
+        if (std::filesystem::exists(argv[1]))
+        {
+            if (!std::filesystem::is_empty(argv[1]))
+            {
+                filePath = argv[1];
+            }
+            else
+            {
+                errorMessage = "File passed is empty";
+            }
+        }
+        else
+        {
+            errorMessage = "File passed doesn't exist";
+        }
+    }
+    else
+    {
+        errorMessage = "No file passed";
+    }
+
     std::vector<wc_HashType> hashesToCalculate = {
         WC_HASH_TYPE_MD5,
         WC_HASH_TYPE_SHA,
@@ -402,30 +432,11 @@ int main(int argc, char* argv[])
 
     std::future<std::map<wc_HashType, std::string>> hashThread;
 
-    if (argc > 1)
+    if (!filePath.empty())
     {
-        if (std::filesystem::exists(argv[1]))
-        {
-            if (!std::filesystem::is_empty(argv[1]))
-            {
-                // launch caulculateHashes function on seperate thread
-                hashThread = std::async(std::launch::async, [&]() {
-                    return calculateHashes(argv[1], hashesToCalculate, hashThreadShouldCancel);
-                });
-            }
-            else
-            {
-                errorMessage = "File passed is empty";
-            }
-        }
-        else
-        {
-            errorMessage = "File passed doesn't exist";
-        }
-    }
-    else
-    {
-        errorMessage = "No file passed";
+        hashThread = std::async(std::launch::async, [&]() {
+            return calculateHashes(filePath, hashesToCalculate, hashThreadShouldCancel);
+        });
     }
 
     // Main loop
@@ -472,8 +483,48 @@ int main(int argc, char* argv[])
             }
         }
 
-        ImGui::Begin("Hasher", &running);
-        ImGui::Text("File: %s", argv[1]);
+        ImGui::Begin("Hasher", &running, ImGuiWindowFlags_MenuBar);
+        if (ImGui::BeginMenuBar())
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("Show Demo Window"))
+                {
+                    showDemoWindow = true;
+                }
+                ImGui::Separator();
+                // Open file dialog
+                if (ImGui::MenuItem("Open"))
+                {
+                    IGFD::FileDialogConfig config;
+	                config.path = ".";
+                    ImGuiFileDialog::Instance()->OpenDialog("ChooseHashFile", "Choose File", ".*", config);
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMenuBar();
+        }
+
+        if (showDemoWindow)
+        {
+            ImGui::ShowDemoWindow(&showDemoWindow);
+        }
+
+        // Calculate hash for file selected when ok clicked
+        if (ImGuiFileDialog::Instance()->Display("ChooseHashFile")) {
+            if (ImGuiFileDialog::Instance()->IsOk()) {
+                std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                filePath = ImGuiFileDialog::Instance()->GetFilePathName();
+                hashThread = std::async(std::launch::async, [&]() {
+                    return calculateHashes(filePath, hashesToCalculate, hashThreadShouldCancel);
+                });
+                calculatedHashes = {};
+                isCalculating = true;
+            }
+            ImGuiFileDialog::Instance()->Close();
+        }
+
+        ImGui::Text("File: %s", filePath.c_str());
         ImGui::Spacing();
         if (errorMessage == "") 
         {
@@ -562,6 +613,14 @@ int main(int argc, char* argv[])
 
             static std::string message = "No hash to check";
             static ImVec4 color = ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 255); // Tailwind Red 400
+
+            // Reset on file change
+            if (isCalculating)
+            {
+                message = "No hash to check";
+                color = ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 255); // Tailwind Red 400
+            }
+
             std::vector<char> inputBuffer(129);
             if (isCalculating) 
             {

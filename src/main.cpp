@@ -177,7 +177,6 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface
 
     // Select Present Mode
     VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_FIFO_KHR };
-    // VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_MAILBOX_KHR, VK_PRESENT_MODE_IMMEDIATE_KHR, VK_PRESENT_MODE_FIFO_KHR };
     wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
 
     // Create SwapChain, RenderPass, Framebuffer, etc.
@@ -511,7 +510,7 @@ int main(int argc, char* argv[])
         }
 
         // Calculate hash for file selected when ok clicked
-        if (ImGuiFileDialog::Instance()->Display("ChooseHashFile")) {
+        if (ImGuiFileDialog::Instance()->Display("ChooseHashFile", 32, {720, 480})) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 filePath = ImGuiFileDialog::Instance()->GetFilePathName();

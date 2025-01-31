@@ -2,7 +2,10 @@
 #define WC_RSA_BLINDING
 #define WOLFSSL_SHA512
 #define WOLFSSL_SHA3
+#define HAVE_BLAKE2
+#define HAVE_BLAKE2B
 
+#include <wolfssl/wolfcrypt/blake2.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include "hash.h"
 #include <string>
@@ -21,6 +24,30 @@ Hasher::Hasher(wc_HashType algorithm) : algorithm(algorithm), finalized(false)
 {
     this->algorithm = algorithm;
 
+    // Get digest size
+    int digestSize = 128;
+    if (algorithm != WC_HASH_TYPE_BLAKE2B)
+    {
+        digestSize = wc_HashGetDigestSize(algorithm);
+        if (digestSize <= 0)
+        {
+            throw HashException("Got invalid digest size!", digestSize, this->algorithm);
+        }
+    }
+
+    this->digest.resize(digestSize);
+
+    // Blake2b specific, Unified hash algoritm doesn't support it
+    if (algorithm == WC_HASH_TYPE_BLAKE2B)
+    {
+        int ret = wc_InitBlake2b(&blake2bhash, digestSize);
+        if (ret != 0)
+        {
+            throw HashException("Failed to initalize hash!", ret, algorithm);
+        }
+        return;
+    }
+
     int ret = wc_HashInit(&hash, algorithm);
     if (ret != 0)
     {
@@ -33,6 +60,17 @@ void Hasher::updateWithBuffer(const byte* buffer, word32 bufferSize)
     if (this->finalized)
     {
         throw std::logic_error("You cannot update a hash after it has been finalized!");
+    }
+
+    // Blake2b specific, Unified hash algoritm doesn't support it
+    if (this->algorithm == WC_HASH_TYPE_BLAKE2B)
+    {
+        int ret = wc_Blake2bUpdate(&this->blake2bhash, buffer, bufferSize);
+        if (ret != 0)
+        {
+            throw HashException("Failed to update hash!", ret, this->algorithm);
+        }
+        return;
     }
 
     int ret = wc_HashUpdate(&this->hash, this->algorithm, buffer, bufferSize);
@@ -50,13 +88,16 @@ void Hasher::finalize()
     }
     this->finalized = true;
 
-    int digestSize = wc_HashGetDigestSize(algorithm);
-    if (digestSize <= 0)
+    // Blake2b specific, Unified hash algoritm doesn't support it
+    if (this->algorithm == WC_HASH_TYPE_BLAKE2B)
     {
-        throw HashException("Got invalid digest size!", digestSize, this->algorithm);
+        int ret = wc_Blake2bFinal(&this->blake2bhash, this->digest.data(), (word32)this->digest.size());
+        if (ret != 0)
+        {
+            throw HashException("Failed to store digest!", ret, this->algorithm);
+        }
+        return;
     }
-
-    this->digest.resize(digestSize);
 
     int ret = wc_HashFinal(&this->hash, this->algorithm, this->digest.data());
     if (ret != 0)
@@ -85,6 +126,12 @@ std::string Hasher::getDigest()
 
 Hasher::~Hasher()
 {
+    // Blake2b specific, Unified hash algoritm doesn't support it
+    if (this->algorithm == WC_HASH_TYPE_BLAKE2B)
+    {
+        return;
+    }
+
     int ret = wc_HashFree(&this->hash, this->algorithm);
     if (ret != 0)
     {

@@ -416,7 +416,7 @@ int main(int argc, char* argv[])
         WC_HASH_TYPE_SHA512,
         WC_HASH_TYPE_SHA3_256,
         WC_HASH_TYPE_SHA3_512,
-        // WC_HASH_TYPE_BLAKE2B,
+        WC_HASH_TYPE_BLAKE2B,
     };
 
     std::map<wc_HashType, std::string> displayNames = {
@@ -426,7 +426,7 @@ int main(int argc, char* argv[])
         {WC_HASH_TYPE_SHA512, "SHA512"},
         {WC_HASH_TYPE_SHA3_256, "SHA3_256"},
         {WC_HASH_TYPE_SHA3_512, "SHA3_512"},
-        // {WC_HASH_TYPE_BLAKE2B, "BLAKE2b"},
+        {WC_HASH_TYPE_BLAKE2B, "BLAKE2b"},
     };
 
     std::future<std::map<wc_HashType, std::string>> hashThread;

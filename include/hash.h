@@ -5,7 +5,10 @@
 #define WC_RSA_BLINDING
 #define WOLFSSL_SHA512
 #define WOLFSSL_SHA3
+#define HAVE_BLAKE2
+#define HAVE_BLAKE2B
 
+#include <wolfssl/wolfcrypt/blake2.h>
 #include <wolfssl/wolfcrypt/hash.h>
 #include <stdexcept>
 #include <string>
@@ -51,6 +54,7 @@ class HashException : public std::runtime_error
 class Hasher {
     private:
         wc_HashAlg hash;
+        Blake2b blake2bhash;
         wc_HashType algorithm;
         std::vector<byte> digest;
         bool finalized;

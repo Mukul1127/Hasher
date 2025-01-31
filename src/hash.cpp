@@ -22,10 +22,8 @@ constexpr size_t BUFFER_SIZE = 1024 * 1024; // 1 MB
 
 Hasher::Hasher(wc_HashType algorithm) : algorithm(algorithm), finalized(false)
 {
-    this->algorithm = algorithm;
-
     // Get digest size
-    int digestSize = 128;
+    int digestSize = 64;
     if (algorithm != WC_HASH_TYPE_BLAKE2B)
     {
         digestSize = wc_HashGetDigestSize(algorithm);

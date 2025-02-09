@@ -513,6 +513,7 @@ int main(int argc, char* argv[])
         if (ImGuiFileDialog::Instance()->Display("ChooseHashFile", 32, {720, 480})) {
             if (ImGuiFileDialog::Instance()->IsOk()) {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+                errorMessage = "";
                 filePath = ImGuiFileDialog::Instance()->GetFilePathName();
                 hashThread = std::async(std::launch::async, [&]() {
                     return calculateHashes(filePath, hashesToCalculate, hashThreadShouldCancel);

@@ -44,19 +44,19 @@ class HashException : public std::runtime_error
             return errorCode;
         }
 
-        [[nodiscard]] wc_HashType algorithm() const {
+        [[nodiscard]] wc_HashType algorithm() const
+        {
             // Return algorithm
             return errorAlgorithm;
         }
 };
 
 class Hasher {
-    private:
-        wc_HashAlg hash{};
-        Blake2b blake2bhash{};
-        wc_HashType algorithm;
-        std::vector<byte> digest;
-        bool finalized;
+    wc_HashAlg hash{};
+    Blake2b blake2bhash{};
+    wc_HashType algorithm;
+    std::vector<byte> digest;
+    bool finalized;
 
     public:
         explicit Hasher(wc_HashType algorithm);

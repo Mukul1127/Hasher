@@ -5,19 +5,21 @@
 #define HAVE_BLAKE2
 #define HAVE_BLAKE2B
 
+#include "hash.h"
+
 #include <wolfssl/wolfcrypt/blake2.h>
 #include <wolfssl/wolfcrypt/hash.h>
-#include "hash.h"
-#include <string>
-#include <stdexcept>
+
 #include <fstream>
-#include <vector>
-#include <sstream>
+#include <future>
 #include <iomanip>
 #include <iostream>
 #include <map>
-#include <future>
 #include <ranges>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 constexpr size_t BUFFER_SIZE = 1024 * 1024; // 1 MB
 
@@ -39,20 +41,20 @@ Hasher::Hasher(const wc_HashType algorithm) : algorithm(algorithm), finalized(fa
     // Blake2b specific, Unified hash algorithm doesn't support it
     if (algorithm == WC_HASH_TYPE_BLAKE2B)
     {
-        if (int ret = wc_InitBlake2b(&blake2bhash, digestSize); ret != 0)
+        if (const int ret = wc_InitBlake2b(&blake2bhash, digestSize); ret != 0)
         {
             throw HashException("Failed to initialize hash!", ret, algorithm);
         }
         return;
     }
 
-    if (int ret = wc_HashInit(&hash, algorithm); ret != 0)
+    if (const int ret = wc_HashInit(&hash, algorithm); ret != 0)
     {
         throw HashException("Failed to initialize hash!", ret, algorithm);
     }
 }
 
-void Hasher::updateWithBuffer(const byte* buffer, word32 bufferSize)
+void Hasher::updateWithBuffer(const byte *buffer, word32 bufferSize)
 {
     if (this->finalized)
     {
@@ -62,14 +64,14 @@ void Hasher::updateWithBuffer(const byte* buffer, word32 bufferSize)
     // Blake2b specific, Unified hash algorithm doesn't support it
     if (this->algorithm == WC_HASH_TYPE_BLAKE2B)
     {
-        if (int ret = wc_Blake2bUpdate(&this->blake2bhash, buffer, bufferSize); ret != 0)
+        if (const int ret = wc_Blake2bUpdate(&this->blake2bhash, buffer, bufferSize); ret != 0)
         {
             throw HashException("Failed to update hash!", ret, this->algorithm);
         }
         return;
     }
 
-    if (int ret = wc_HashUpdate(&this->hash, this->algorithm, buffer, bufferSize); ret != 0)
+    if (const int ret = wc_HashUpdate(&this->hash, this->algorithm, buffer, bufferSize); ret != 0)
     {
         throw HashException("Failed to update hash!", ret, this->algorithm);
     }
@@ -86,20 +88,23 @@ void Hasher::finalize()
     // Blake2b specific, Unified hash algorithm doesn't support it
     if (this->algorithm == WC_HASH_TYPE_BLAKE2B)
     {
-        if (int ret = wc_Blake2bFinal(&this->blake2bhash, this->digest.data(), static_cast<word32>(this->digest.size())); ret != 0)
+        if (const int ret =
+                wc_Blake2bFinal(&this->blake2bhash, this->digest.data(), static_cast<word32>(this->digest.size()));
+            ret != 0)
         {
             throw HashException("Failed to store digest!", ret, this->algorithm);
         }
         return;
     }
 
-    if (int ret = wc_HashFinal(&this->hash, this->algorithm, this->digest.data()); ret != 0)
+    if (const int ret = wc_HashFinal(&this->hash, this->algorithm, this->digest.data()); ret != 0)
     {
         throw HashException("Failed to store digest!", ret, this->algorithm);
     }
 }
 
-std::string Hasher::getDigest() const {
+std::string Hasher::getDigest() const
+{
     if (!this->finalized)
     {
         throw std::logic_error("You must finalize a hash to get the digest!");
@@ -108,7 +113,7 @@ std::string Hasher::getDigest() const {
     // Convert digest to hex string
     std::stringstream ss;
     ss << std::hex << std::setfill('0');
-    for (unsigned char i : this->digest)
+    for (const unsigned char i : this->digest)
     {
         ss << std::setw(2) << static_cast<int>(i);
     }
@@ -130,12 +135,12 @@ Hasher::~Hasher()
     }
 }
 
-std::map<wc_HashType, std::string> calculateHashes(const std::string& filePath, const std::vector<wc_HashType>& hashesToCalculate, std::optional<std::reference_wrapper<const std::atomic<bool>>> shouldCancel)
+std::map<wc_HashType, std::string> calculateHashes(
+    const std::string &filePath, const std::vector<wc_HashType> &hashesToCalculate,
+    const std::optional<std::reference_wrapper<const std::atomic<bool>>> shouldCancel)
 {
     // Helper to check cancellation
-    auto isCancelled = [&]() -> bool {
-        return shouldCancel && shouldCancel->get().load();
-    };
+    auto isCancelled = [&]() -> bool { return shouldCancel && shouldCancel->get().load(); };
 
     std::map<wc_HashType, std::unique_ptr<Hasher>> hashes;
     if (isCancelled())
@@ -163,16 +168,16 @@ std::map<wc_HashType, std::string> calculateHashes(const std::string& filePath, 
         }
 
         file.read(reinterpret_cast<char *>(buffer.data()), BUFFER_SIZE);
-        std::streamsize bytesRead = file.gcount();
+        const std::streamsize bytesRead = file.gcount();
 
-        for (const auto &hasher: hashes | std::views::values)
+        for (const auto &hasher : hashes | std::views::values)
         {
             hasher->updateWithBuffer(buffer.data(), static_cast<word32>(bytesRead));
         }
     }
     file.close();
 
-    for (const auto &hasher: hashes | std::views::values)
+    for (const auto &hasher : hashes | std::views::values)
     {
         hasher->finalize();
     }
@@ -182,7 +187,7 @@ std::map<wc_HashType, std::string> calculateHashes(const std::string& filePath, 
     }
 
     std::map<wc_HashType, std::string> calculateHashes;
-    for (const auto& [algorithm, hasher] : hashes)
+    for (const auto &[algorithm, hasher] : hashes)
     {
         calculateHashes[algorithm] = hasher->getDigest();
     }

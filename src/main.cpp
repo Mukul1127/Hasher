@@ -1,31 +1,31 @@
 #define GLFW_INCLUDE_NONE
 #define GLFW_INCLUDE_VULKAN
 
-#include <iostream>
-#include <format>
-#include <map>
-#include <filesystem>
-#include <future>
+#include "ImGuiFileDialog.h"
+#include "hash.h"
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_vulkan.h"
-#include "ImGuiFileDialog.h"
 #include <GLFW/glfw3.h>
-#include "hash.h"
+#include <filesystem>
+#include <format>
+#include <future>
+#include <iostream>
+#include <map>
 
-static VkAllocationCallbacks*   g_Allocator = nullptr;
-static VkInstance               g_Instance = VK_NULL_HANDLE;
-static VkPhysicalDevice         g_PhysicalDevice = VK_NULL_HANDLE;
-static VkDevice                 g_Device = VK_NULL_HANDLE;
-static uint32_t                 g_QueueFamily = static_cast<uint32_t>(-1);
-static VkQueue                  g_Queue = VK_NULL_HANDLE;
-static VkPipelineCache          g_PipelineCache = VK_NULL_HANDLE;
-static VkDescriptorPool         g_DescriptorPool = VK_NULL_HANDLE;
+static VkAllocationCallbacks *g_Allocator = nullptr;
+static VkInstance g_Instance = VK_NULL_HANDLE;
+static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
+static VkDevice g_Device = VK_NULL_HANDLE;
+static uint32_t g_QueueFamily = static_cast<uint32_t>(-1);
+static VkQueue g_Queue = VK_NULL_HANDLE;
+static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
+static VkDescriptorPool g_DescriptorPool = VK_NULL_HANDLE;
 static ImGui_ImplVulkanH_Window g_MainWindowData;
-static uint32_t                 g_MinImageCount = 2;
-static bool                     g_SwapChainRebuild = false;
+static uint32_t g_MinImageCount = 2;
+static bool g_SwapChainRebuild = false;
 
-static void glfw_error_callback(int error, const char* description)
+static void glfw_error_callback(int error, const char *description)
 {
     std::cerr << std::format("GLFW Error {}: {}", error, description) << std::endl;
 }
@@ -43,9 +43,9 @@ static void check_vk_result(const VkResult err)
     }
 }
 
-static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properties, const char* extension)
+static bool IsExtensionAvailable(const ImVector<VkExtensionProperties> &properties, const char *extension)
 {
-    for (const auto&[extensionName, specVersion] : properties)
+    for (const auto &[extensionName, specVersion] : properties)
     {
         if (strcmp(extensionName, extension) == 0)
         {
@@ -55,7 +55,7 @@ static bool IsExtensionAvailable(const ImVector<VkExtensionProperties>& properti
     return false;
 }
 
-static void SetupVulkan(ImVector<const char*> instance_extensions)
+static void SetupVulkan(ImVector<const char *> instance_extensions)
 {
     VkResult err;
 
@@ -102,7 +102,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
 
     // Create Logical Device (with 1 queue)
     {
-        ImVector<const char*> device_extensions;
+        ImVector<const char *> device_extensions;
         device_extensions.push_back("VK_KHR_swapchain");
 
         // Enumerate physical device extension
@@ -118,7 +118,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
         }
 #endif
 
-        constexpr float queue_priority[] = { 1.0f };
+        constexpr float queue_priority[] = {1.0f};
         VkDeviceQueueCreateInfo queue_info[1] = {};
         queue_info[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queue_info[0].queueFamilyIndex = g_QueueFamily;
@@ -137,15 +137,14 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
 
     // Create Descriptor Pool
     {
-        VkDescriptorPoolSize pool_sizes[] =
-        {
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE },
+        VkDescriptorPoolSize pool_sizes[] = {
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE},
         };
         VkDescriptorPoolCreateInfo pool_info = {};
         pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
         pool_info.maxSets = 0;
-        for (VkDescriptorPoolSize& pool_size : pool_sizes)
+        for (VkDescriptorPoolSize &pool_size : pool_sizes)
         {
             pool_info.maxSets += pool_size.descriptorCount;
         }
@@ -156,7 +155,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions)
     }
 }
 
-static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height)
+static void SetupVulkanWindow(ImGui_ImplVulkanH_Window *wd, VkSurfaceKHR surface, int width, int height)
 {
     wd->Surface = surface;
 
@@ -170,17 +169,22 @@ static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface
     }
 
     // Select Surface Format
-    constexpr VkFormat requestSurfaceImageFormat[] = { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM };
+    constexpr VkFormat requestSurfaceImageFormat[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM,
+                                                      VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
     constexpr VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
+    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat,
+                                                              (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat),
+                                                              requestSurfaceColorSpace);
 
     // Select Present Mode
-    VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_FIFO_KHR };
-    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
+    VkPresentModeKHR present_modes[] = {VK_PRESENT_MODE_FIFO_KHR};
+    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(g_PhysicalDevice, wd->Surface, &present_modes[0],
+                                                          IM_ARRAYSIZE(present_modes));
 
     // Create SwapChain, RenderPass, Framebuffer, etc.
     IM_ASSERT(g_MinImageCount >= 2);
-    ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, wd, g_QueueFamily, g_Allocator, width, height, g_MinImageCount);
+    ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, wd, g_QueueFamily, g_Allocator,
+                                           width, height, g_MinImageCount);
 }
 
 static void CleanupVulkan()
@@ -196,11 +200,14 @@ static void CleanupVulkanWindow()
     ImGui_ImplVulkanH_DestroyWindow(g_Instance, g_Device, &g_MainWindowData, g_Allocator);
 }
 
-static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
+static void FrameRender(ImGui_ImplVulkanH_Window *wd, ImDrawData *draw_data)
 {
-    VkSemaphore image_acquired_semaphore  = wd->FrameSemaphores[static_cast<int>(wd->SemaphoreIndex)].ImageAcquiredSemaphore;
-    VkSemaphore render_complete_semaphore = wd->FrameSemaphores[static_cast<int>(wd->SemaphoreIndex)].RenderCompleteSemaphore;
-    VkResult err = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
+    VkSemaphore image_acquired_semaphore =
+        wd->FrameSemaphores[static_cast<int>(wd->SemaphoreIndex)].ImageAcquiredSemaphore;
+    VkSemaphore render_complete_semaphore =
+        wd->FrameSemaphores[static_cast<int>(wd->SemaphoreIndex)].RenderCompleteSemaphore;
+    VkResult err = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE,
+                                         &wd->FrameIndex);
     if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
     {
         g_SwapChainRebuild = true;
@@ -214,9 +221,10 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
         check_vk_result(err);
     }
 
-    const ImGui_ImplVulkanH_Frame* fd = &wd->Frames[static_cast<int>(wd->FrameIndex)];
+    const ImGui_ImplVulkanH_Frame *fd = &wd->Frames[static_cast<int>(wd->FrameIndex)];
     {
-        err = vkWaitForFences(g_Device, 1, &fd->Fence, VK_TRUE, UINT64_MAX); // wait indefinitely instead of periodically checking
+        err = vkWaitForFences(g_Device, 1, &fd->Fence, VK_TRUE,
+                              UINT64_MAX); // wait indefinitely instead of periodically checking
         check_vk_result(err);
 
         err = vkResetFences(g_Device, 1, &fd->Fence);
@@ -267,13 +275,14 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
     }
 }
 
-static void FramePresent(ImGui_ImplVulkanH_Window* wd)
+static void FramePresent(ImGui_ImplVulkanH_Window *wd)
 {
     if (g_SwapChainRebuild)
     {
         return;
     }
-    VkSemaphore render_complete_semaphore = wd->FrameSemaphores[static_cast<int>(wd->SemaphoreIndex)].RenderCompleteSemaphore;
+    VkSemaphore render_complete_semaphore =
+        wd->FrameSemaphores[static_cast<int>(wd->SemaphoreIndex)].RenderCompleteSemaphore;
     VkPresentInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
     info.waitSemaphoreCount = 1;
@@ -298,7 +307,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd)
 }
 
 // Main code
-int main(int argc, char* argv[])
+int main(int argc, char *argv[])
 {
     glfwSetErrorCallback(glfw_error_callback);
     if (!glfwInit())
@@ -309,16 +318,16 @@ int main(int argc, char* argv[])
     // Create window with Vulkan context
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-    GLFWwindow* window = glfwCreateWindow(1, 1, "", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(1, 1, "", nullptr, nullptr);
     if (!glfwVulkanSupported())
     {
         std::cerr << "GLFW: Vulkan Not Supported" << std::endl;
         return 1;
     }
 
-    ImVector<const char*> extensions;
+    ImVector<const char *> extensions;
     uint32_t extensions_count = 0;
-    const char** glfw_extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
+    const char **glfw_extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
     for (uint32_t i = 0; i < extensions_count; i++)
     {
         extensions.push_back(glfw_extensions[i]);
@@ -333,13 +342,14 @@ int main(int argc, char* argv[])
     // Create Framebuffers
     int w, h;
     glfwGetFramebufferSize(window, &w, &h);
-    ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
+    ImGui_ImplVulkanH_Window *wd = &g_MainWindowData;
     SetupVulkanWindow(wd, surface, w, h);
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGuiIO &io = ImGui::GetIO();
+    (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
@@ -372,17 +382,17 @@ int main(int argc, char* argv[])
 
     // Fonts
     io.Fonts->AddFontFromFileTTF("assets/Inter-Medium.woff2", 15.0f);
-    ImFont* cascadia = io.Fonts->AddFontFromFileTTF("assets/CascadiaCodeNF-Regular.woff2", 15.0f);
+    ImFont *cascadia = io.Fonts->AddFontFromFileTTF("assets/CascadiaCodeNF-Regular.woff2", 15.0f);
 
     // State
-    std::atomic<bool> hashThreadShouldCancel(false);
+    std::atomic hashThreadShouldCancel(false);
     bool isCalculating = true;
     std::string errorMessage;
     bool running = true;
     std::string filePath;
 
     bool showDemoWindow = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    auto clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Set file path
     if (argc > 1)
@@ -408,23 +418,14 @@ int main(int argc, char* argv[])
         errorMessage = "No file passed";
     }
 
-    std::vector<wc_HashType> hashesToCalculate = {
-        WC_HASH_TYPE_MD5,
-        WC_HASH_TYPE_SHA,
-        WC_HASH_TYPE_SHA256,
-        WC_HASH_TYPE_SHA512,
-        WC_HASH_TYPE_SHA3_256,
-        WC_HASH_TYPE_SHA3_512,
-        WC_HASH_TYPE_BLAKE2B,
+    std::vector hashesToCalculate = {
+        WC_HASH_TYPE_MD5,      WC_HASH_TYPE_SHA,      WC_HASH_TYPE_SHA256,  WC_HASH_TYPE_SHA512,
+        WC_HASH_TYPE_SHA3_256, WC_HASH_TYPE_SHA3_512, WC_HASH_TYPE_BLAKE2B,
     };
 
     std::map<wc_HashType, std::string> displayNames = {
-        {WC_HASH_TYPE_MD5, "MD5"},
-        {WC_HASH_TYPE_SHA, "SHA1"},
-        {WC_HASH_TYPE_SHA256, "SHA256"},
-        {WC_HASH_TYPE_SHA512, "SHA512"},
-        {WC_HASH_TYPE_SHA3_256, "SHA3_256"},
-        {WC_HASH_TYPE_SHA3_512, "SHA3_512"},
+        {WC_HASH_TYPE_MD5, "MD5"},         {WC_HASH_TYPE_SHA, "SHA1"},          {WC_HASH_TYPE_SHA256, "SHA256"},
+        {WC_HASH_TYPE_SHA512, "SHA512"},   {WC_HASH_TYPE_SHA3_256, "SHA3_256"}, {WC_HASH_TYPE_SHA3_512, "SHA3_512"},
         {WC_HASH_TYPE_BLAKE2B, "BLAKE2b"},
     };
 
@@ -432,9 +433,8 @@ int main(int argc, char* argv[])
 
     if (!filePath.empty())
     {
-        hashThread = std::async(std::launch::async, [&]() {
-            return calculateHashes(filePath, hashesToCalculate, hashThreadShouldCancel);
-        });
+        hashThread = std::async(std::launch::async,
+                                [&]() { return calculateHashes(filePath, hashesToCalculate, hashThreadShouldCancel); });
     }
 
     // Main loop
@@ -446,10 +446,12 @@ int main(int argc, char* argv[])
         // Resize swap chain?
         int fb_width, fb_height;
         glfwGetFramebufferSize(window, &fb_width, &fb_height);
-        if (fb_width > 0 && fb_height > 0 && (g_SwapChainRebuild || g_MainWindowData.Width != fb_width || g_MainWindowData.Height != fb_height))
+        if (fb_width > 0 && fb_height > 0 &&
+            (g_SwapChainRebuild || g_MainWindowData.Width != fb_width || g_MainWindowData.Height != fb_height))
         {
             ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-            ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, fb_width, fb_height, g_MinImageCount);
+            ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData,
+                                                   g_QueueFamily, g_Allocator, fb_width, fb_height, g_MinImageCount);
             g_MainWindowData.FrameIndex = 0;
             g_SwapChainRebuild = false;
         }
@@ -495,7 +497,7 @@ int main(int argc, char* argv[])
                 if (ImGui::MenuItem("Open"))
                 {
                     IGFD::FileDialogConfig config;
-	                config.path = ".";
+                    config.path = ".";
                     ImGuiFileDialog::Instance()->OpenDialog("ChooseHashFile", "Choose File", ".*", config);
                 }
                 ImGui::EndMenu();
@@ -509,8 +511,10 @@ int main(int argc, char* argv[])
         }
 
         // Calculate hash for file selected when ok clicked
-        if (ImGuiFileDialog::Instance()->Display("ChooseHashFile", 32, {720, 480})) {
-            if (ImGuiFileDialog::Instance()->IsOk()) {
+        if (ImGuiFileDialog::Instance()->Display("ChooseHashFile", 32, {720, 480}))
+        {
+            if (ImGuiFileDialog::Instance()->IsOk())
+            {
                 std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
                 errorMessage = "";
                 filePath = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -529,7 +533,8 @@ int main(int argc, char* argv[])
         {
             ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(7, 7));
 
-            if (ImGui::BeginTable("HashTable", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_PadOuterX))
+            if (ImGui::BeginTable("HashTable", 2,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_PadOuterX))
             {
                 ImGui::TableSetupColumn("Algorithm", ImGuiTableColumnFlags_WidthFixed);
                 ImGui::TableSetupColumn("Hash", ImGuiTableColumnFlags_WidthStretch);
@@ -540,10 +545,10 @@ int main(int argc, char* argv[])
 
                 if (isCalculating)
                 {
-                    for (const auto& algorithm : hashesToCalculate)
+                    for (const auto &algorithm : hashesToCalculate)
                     {
                         ImGui::TableNextRow();
-                        
+
                         // Algorithm column
                         ImGui::TableNextColumn();
 
@@ -566,10 +571,10 @@ int main(int argc, char* argv[])
                 }
                 else
                 {
-                    for (const auto& [algorithm, hash] : calculatedHashes)
+                    for (const auto &[algorithm, hash] : calculatedHashes)
                     {
                         ImGui::TableNextRow();
-                        
+
                         // Algorithm column
                         ImGui::TableNextColumn();
 
@@ -611,22 +616,24 @@ int main(int argc, char* argv[])
             ImGui::Spacing();
 
             static std::string message = "No hash to check";
-            static ImVec4 color = ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 255); // Tailwind Red 400
+            static auto color =
+                ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 255); // Tailwind Red 400
 
             // Reset on file change
             if (isCalculating)
             {
                 message = "No hash to check";
-                color = ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 255); // Tailwind Red 400
+                color = ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f),
+                               255); // Tailwind Red 400
             }
 
             std::vector<char> inputBuffer(129);
-            if (isCalculating) 
+            if (isCalculating)
             {
                 ImGui::BeginDisabled();
             }
             ImGui::InputText("Check Hash", inputBuffer.data(), inputBuffer.size());
-            if (isCalculating) 
+            if (isCalculating)
             {
                 ImGui::EndDisabled();
             }
@@ -634,25 +641,19 @@ int main(int argc, char* argv[])
             {
                 bool found = false;
 
-                for (const auto& [algorithm, hash] : calculatedHashes)
+                for (const auto &[algorithm, hash] : calculatedHashes)
                 {
                     if (hash.contains("Err-crypt code: "))
                     {
                         continue;
                     }
                     // Compare case-insensitively
-                    if (std::equal(
-                        inputBuffer.data(), 
-                        inputBuffer.data() + strlen(inputBuffer.data()), 
-                        hash.begin(), 
-                        hash.end(), 
-                        [](char a, char b) { 
-                            return std::tolower(a) == std::tolower(b); 
-                        }
-                    ))
+                    if (std::equal(inputBuffer.data(), inputBuffer.data() + strlen(inputBuffer.data()), hash.begin(),
+                                   hash.end(), [](char a, char b) { return std::tolower(a) == std::tolower(b); }))
                     {
                         message = std::format("Match found for algorithm: {}", displayNames.at(algorithm));
-                        color = ImVec4(32 * (1.0f / 255.0f), 187 * (1.0f / 255.0f), 126 * (1.0f / 255.0f), 255); // Tailwind Emerald 500
+                        color = ImVec4(32 * (1.0f / 255.0f), 187 * (1.0f / 255.0f), 126 * (1.0f / 255.0f),
+                                       255); // Tailwind Emerald 500
                         found = true;
                         break;
                     }
@@ -661,7 +662,8 @@ int main(int argc, char* argv[])
                 if (!found)
                 {
                     message = "No match found.";
-                    color = ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 255);  // Tailwind Red 400
+                    color = ImVec4(244 * (1.0f / 255.0f), 105 * (1.0f / 255.0f), 105 * (1.0f / 255.0f),
+                                   255); // Tailwind Red 400
                 }
             }
 
@@ -675,7 +677,7 @@ int main(int argc, char* argv[])
 
         // Rendering
         ImGui::Render();
-        ImDrawData* main_draw_data = ImGui::GetDrawData();
+        ImDrawData *main_draw_data = ImGui::GetDrawData();
         const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
         wd->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
         wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;

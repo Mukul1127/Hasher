@@ -25,8 +25,8 @@ class HashException : public std::runtime_error
         int errorCode;
 
     public:
-        HashException(std::string errorMessage, int code, wc_HashType algorithm)
-            : std::runtime_error(errorMessage), errorCode(code), errorAlgorithm(algorithm)
+        HashException(const std::string& errorMessage, const int code, const wc_HashType algorithm)
+            : std::runtime_error(errorMessage), errorAlgorithm(algorithm), errorCode(code)
         {
             // Log error
             std::cerr << this->formattedMessage() << std::endl;
@@ -35,17 +35,16 @@ class HashException : public std::runtime_error
         std::string formattedMessage()
         {
             // Return formatted message for logging
-            return std::format("Error Message: {} - Returned Code: {} - Algorithm Used: {}", std::runtime_error::what(), errorCode, (int)errorAlgorithm);
+            return std::format("Error Message: {} - Returned Code: {} - Algorithm Used: {}", std::runtime_error::what(), errorCode, static_cast<int>(errorAlgorithm));
         }
 
-        int code()
+        [[nodiscard]] int code() const
         {
             // Return code
             return errorCode;
         }
 
-        wc_HashType algorithm()
-        {
+        [[nodiscard]] wc_HashType algorithm() const {
             // Return algorithm
             return errorAlgorithm;
         }
@@ -53,17 +52,17 @@ class HashException : public std::runtime_error
 
 class Hasher {
     private:
-        wc_HashAlg hash;
-        Blake2b blake2bhash;
+        wc_HashAlg hash{};
+        Blake2b blake2bhash{};
         wc_HashType algorithm;
         std::vector<byte> digest;
         bool finalized;
 
     public:
-        Hasher(wc_HashType algorithm);
+        explicit Hasher(wc_HashType algorithm);
         void updateWithBuffer(const byte* buffer, word32 bufferSize);
         void finalize();
-        std::string getDigest();
+        [[nodiscard]] std::string getDigest() const;
         ~Hasher();
 };
 

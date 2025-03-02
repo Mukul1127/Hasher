@@ -18,38 +18,7 @@
 #include <map>
 #include <future>
 
-class HashException : public std::runtime_error
-{
-    private:
-        wc_HashType errorAlgorithm;
-        int errorCode;
-
-    public:
-        HashException(const std::string& errorMessage, const int code, const wc_HashType algorithm)
-            : std::runtime_error(errorMessage), errorAlgorithm(algorithm), errorCode(code)
-        {
-            // Log error
-            std::cerr << this->formattedMessage() << std::endl;
-        }
-
-        std::string formattedMessage()
-        {
-            // Return formatted message for logging
-            return std::format("Error Message: {} - Returned Code: {} - Algorithm Used: {}", std::runtime_error::what(), errorCode, static_cast<int>(errorAlgorithm));
-        }
-
-        [[nodiscard]] int code() const
-        {
-            // Return code
-            return errorCode;
-        }
-
-        [[nodiscard]] wc_HashType algorithm() const
-        {
-            // Return algorithm
-            return errorAlgorithm;
-        }
-};
+class HashException;
 
 class Hasher {
     wc_HashAlg hash{};

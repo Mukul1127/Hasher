@@ -1,10 +1,13 @@
 {
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "hasher",
+  "version": "1.0.0",
   "dependencies": [
     {
       "name": "freetype",
       "features": [
-        "zlib",
-        "brotli"
+        "brotli",
+        "zlib"
       ]
     },
     "glfw3",

@@ -483,7 +483,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        ImGui::Begin("Hasher", &running, ImGuiWindowFlags_MenuBar);
+        ImGui::Begin("Hasher", &running, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_AlwaysAutoResize);
         if (ImGui::BeginMenuBar())
         {
             if (ImGui::BeginMenu("File"))

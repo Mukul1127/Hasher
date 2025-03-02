@@ -22,6 +22,8 @@
 #include <string>
 #include <vector>
 
+constexpr int BLAKE2B_DIGEST_SIZE = 64;
+
 constexpr size_t BUFFER_SIZE = 1024 * 1024; // 1 MB
 
 class HashException final : public std::runtime_error
@@ -62,7 +64,7 @@ Hasher::Hasher(const wc_HashType algorithm) : algorithm(algorithm), finalized(fa
     switch (this->algorithm)
     {
     case WC_HASH_TYPE_BLAKE2B:
-        digestSize = 64;
+        digestSize = BLAKE2B_DIGEST_SIZE;
         break;
     default:
         digestSize = wc_HashGetDigestSize(this->algorithm);
